@@ -1,9 +1,0 @@
-# ninja log v5
-0	340	1774677194823119684	CMakeFiles/vcat_vvdec_jni.dir/vvdec_jni.cc.o	aa7db4caf5a1247d
-342	2222	1774677196688529685	/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/intermediates/cxx/RelWithDebInfo/1s34523x/obj/armeabi-v7a/libvcat_vvdec_jni.so	ef74535c7a8060fe
-1	337	1774680908735457746	CMakeFiles/vcat_vvdec_jni.dir/vvdec_jni.cc.o	aa7db4caf5a1247d
-337	2265	1774680910646744780	/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/intermediates/cxx/RelWithDebInfo/1s34523x/obj/armeabi-v7a/libvcat_vvdec_jni.so	ef74535c7a8060fe
-2	363	1774680947965234426	CMakeFiles/vcat_vvdec_jni.dir/vvdec_jni.cc.o	aa7db4caf5a1247d
-363	2439	1774680950026107857	/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/intermediates/cxx/RelWithDebInfo/1s34523x/obj/armeabi-v7a/libvcat_vvdec_jni.so	ef74535c7a8060fe
-2	357	1774681145669415745	CMakeFiles/vcat_vvdec_jni.dir/vvdec_jni.cc.o	aa7db4caf5a1247d
-357	2409	1774681147695035219	/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/intermediates/cxx/RelWithDebInfo/1s34523x/obj/armeabi-v7a/libvcat_vvdec_jni.so	ef74535c7a8060fe

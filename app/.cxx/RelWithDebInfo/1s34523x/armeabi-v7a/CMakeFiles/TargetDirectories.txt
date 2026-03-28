@@ -1,3 +1,0 @@
-/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/.cxx/RelWithDebInfo/1s34523x/armeabi-v7a/CMakeFiles/vcat_vvdec_jni.dir
-/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/.cxx/RelWithDebInfo/1s34523x/armeabi-v7a/CMakeFiles/edit_cache.dir
-/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/.cxx/RelWithDebInfo/1s34523x/armeabi-v7a/CMakeFiles/rebuild_cache.dir

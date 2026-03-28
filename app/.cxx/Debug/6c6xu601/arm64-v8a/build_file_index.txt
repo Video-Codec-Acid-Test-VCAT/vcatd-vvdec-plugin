@@ -1,1 +1,0 @@
-/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/src/main/cpp/CMakeLists.txt
