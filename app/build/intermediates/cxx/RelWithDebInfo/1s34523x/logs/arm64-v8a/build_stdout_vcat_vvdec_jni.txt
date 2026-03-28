@@ -1,9 +1,0 @@
-ninja: Entering directory `/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/.cxx/RelWithDebInfo/1s34523x/arm64-v8a'
-[1/2] Building CXX object CMakeFiles/vcat_vvdec_jni.dir/vvdec_jni.cc.o
-In file included from /Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/src/main/cpp/vvdec_jni.cc:46:
-In file included from /Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/vvdec/install-arm64-v8a/include/vvdec/vvdec.h:50:
-/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/vvdec/install-arm64-v8a/include/vvdec/sei.h:297:9: warning: empty struct has size 0 in C, size 1 in C++ [-Wextern-c-compat]
-  297 | typedef struct vvdecSEIDependentRapIndication
-      |         ^
-1 warning generated.
-[2/2] Linking CXX shared library /Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/intermediates/cxx/RelWithDebInfo/1s34523x/obj/arm64-v8a/libvcat_vvdec_jni.so

@@ -1,7 +1,0 @@
-com.roncatech.libvcat.vvdec.vcatd-vvdec-plugin-pngs-0 /Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/generated/res/pngs/release
-com.roncatech.libvcat.vvdec.vcatd-vvdec-plugin-resValues-1 /Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/generated/res/resValues/release
-com.roncatech.libvcat.vvdec.vcatd-vvdec-plugin-mergeReleaseResources-2 /Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/intermediates/incremental/release/mergeReleaseResources/merged.dir
-com.roncatech.libvcat.vvdec.vcatd-vvdec-plugin-mergeReleaseResources-3 /Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/intermediates/incremental/release/mergeReleaseResources/stripped.dir
-com.roncatech.libvcat.vvdec.vcatd-vvdec-plugin-release-4 /Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/intermediates/merged_res/release/mergeReleaseResources
-com.roncatech.libvcat.vvdec.vcatd-vvdec-plugin-main-5 /Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/src/main/res
-com.roncatech.libvcat.vvdec.vcatd-vvdec-plugin-release-6 /Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/src/release/res

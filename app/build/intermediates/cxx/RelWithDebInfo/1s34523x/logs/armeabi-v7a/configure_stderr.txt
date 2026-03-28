@@ -1,6 +1,0 @@
-CMake Warning:
-  Manually-specified variables were not used by the project:
-
-    VVDEC_INSTALL_ARM64_V8A
-
-
