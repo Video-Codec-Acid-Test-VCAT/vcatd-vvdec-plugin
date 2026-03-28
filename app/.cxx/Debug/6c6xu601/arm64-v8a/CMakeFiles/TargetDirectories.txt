@@ -1,0 +1,3 @@
+/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/.cxx/Debug/6c6xu601/arm64-v8a/CMakeFiles/vcat_vvdec_jni.dir
+/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/.cxx/Debug/6c6xu601/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/.cxx/Debug/6c6xu601/arm64-v8a/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/vvdec/build-arm64-v8a/cmake_install.cmake",
+		"/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/vvdec/build-arm64-v8a/source/Lib/vvdec/cmake_install.cmake",
+		"/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/vvdec/build-arm64-v8a/source/App/vvdecapp/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

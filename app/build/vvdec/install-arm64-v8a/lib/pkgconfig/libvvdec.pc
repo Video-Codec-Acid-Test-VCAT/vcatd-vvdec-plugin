@@ -1,0 +1,11 @@
+prefix=/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/vvdec/install-arm64-v8a
+exec_prefix=bin
+libdir=/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/vvdec/install-arm64-v8a/lib
+includedir=/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/vvdec/install-arm64-v8a/include
+
+Name: libvvdec
+Description: Fraunhofer Versatile Video Decoder (VVdeC)
+Version: 3.0.0
+Libs: -L${libdir} -lvvdec
+Libs.private: -lc++ -lm -l:libunwind.a -ldl -l:libunwind.a -ldl -pthread
+Cflags: -I${includedir}

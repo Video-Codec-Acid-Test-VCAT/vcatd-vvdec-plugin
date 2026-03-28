@@ -1,0 +1,78 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.roncatech.vcat",
+    "module": "vcatd-vvdec-plugin",
+    "version": "0.0.1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.11.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "vcatd-vvdec-plugin-0.0.1.aar",
+          "url": "vcatd-vvdec-plugin-0.0.1.aar",
+          "size": 1878338,
+          "sha512": "7f88b8d155c74f45d9ea20d76ea8c566afeddd490929b2859f6332fbe5e0d185714806d271ae8dd168c0e0517a46493562b30741dc325f8fc9bc2993f123630b",
+          "sha256": "ada9a7c88861ce796a9b5910a2ffb4ef0e9aa7d7c29b16ed07b74a90d29af9de",
+          "sha1": "70dc0a299092fcaf55bbf0d5027106ebb14d6f4a",
+          "md5": "f93771302458ccdbd58e25489b6df706"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "vcatd-vvdec-plugin-0.0.1.aar",
+          "url": "vcatd-vvdec-plugin-0.0.1.aar",
+          "size": 1878338,
+          "sha512": "7f88b8d155c74f45d9ea20d76ea8c566afeddd490929b2859f6332fbe5e0d185714806d271ae8dd168c0e0517a46493562b30741dc325f8fc9bc2993f123630b",
+          "sha256": "ada9a7c88861ce796a9b5910a2ffb4ef0e9aa7d7c29b16ed07b74a90d29af9de",
+          "sha1": "70dc0a299092fcaf55bbf0d5027106ebb14d6f4a",
+          "md5": "f93771302458ccdbd58e25489b6df706"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseSourcePublication",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "vcatd-vvdec-plugin-0.0.1-sources.jar",
+          "url": "vcatd-vvdec-plugin-0.0.1-sources.jar",
+          "size": 29480,
+          "sha512": "f3cdb4ef33bc187106dbaba157d34f108ec0daa283c3fcfc81ae87685fc951416b99f5d24b3c82da1d1cbf8c9eb7504c36f2f867ab202406c66eaf903ff598be",
+          "sha256": "8a9e15810036c550491482c54b5129fa8d272f9941b4c2421ff97534cc9dd649",
+          "sha1": "16567ae90b1ba40286a6f4c732f5f7b8252ff5e9",
+          "md5": "26a6f7f770b161776c39903b2f42b144"
+        }
+      ]
+    }
+  ]
+}

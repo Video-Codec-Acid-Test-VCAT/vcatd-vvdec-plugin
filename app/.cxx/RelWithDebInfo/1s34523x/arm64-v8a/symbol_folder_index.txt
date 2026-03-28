@@ -1,0 +1,1 @@
+/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/intermediates/cxx/RelWithDebInfo/1s34523x/obj/arm64-v8a

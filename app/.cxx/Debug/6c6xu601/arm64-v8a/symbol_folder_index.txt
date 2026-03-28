@@ -1,0 +1,1 @@
+/Users/davidronca/AndroidStudioProjects/vcatd-vvdec-plugin/app/build/intermediates/cxx/Debug/6c6xu601/obj/arm64-v8a

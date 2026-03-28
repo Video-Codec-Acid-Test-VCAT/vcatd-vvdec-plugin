@@ -1,0 +1,32 @@
+/*
+ * VCAT (Video Codec Acid Test)
+ *
+ * SPDX-FileCopyrightText: Copyright (C) 2020-2025 VCAT authors and RoncaTech
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+pluginManagement {
+    repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        mavenLocal()
+    }
+}
+
+rootProject.name = "vcatd-vvdec-plugin"
+include(":vcatd-vvdec-plugin")
+project(":vcatd-vvdec-plugin").projectDir = file("app")

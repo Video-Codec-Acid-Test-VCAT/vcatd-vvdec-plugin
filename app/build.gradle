@@ -1,0 +1,226 @@
+/*
+ * VCAT (Video Codec Acid Test)
+ *
+ * SPDX-FileCopyrightText: Copyright (C) 2020-2025 VCAT authors and RoncaTech
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+plugins {
+    id 'com.android.library'
+    id 'maven-publish'
+}
+
+group   = 'com.roncatech.vcat'
+version = '0.0.1'
+
+def vvdecAbis = ['arm64-v8a', 'armeabi-v7a']
+def minApi    = 29
+
+android {
+    namespace 'com.roncatech.libvcat.vvdec'
+    compileSdk 35
+    ndkVersion "27.0.12077973"
+
+    defaultConfig {
+        minSdk minApi
+        targetSdk 35
+        ndk { abiFilters.addAll(vvdecAbis) }
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DVVDEC_INSTALL_ARM64_V8A=${layout.buildDirectory.dir('vvdec/install-arm64-v8a').get().asFile.absolutePath}",
+                          "-DVVDEC_INSTALL_ARMEABI_V7A=${layout.buildDirectory.dir('vvdec/install-armeabi-v7a').get().asFile.absolutePath}"
+            }
+        }
+
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug { debuggable true }
+    }
+
+    externalNativeBuild { cmake { path file('src/main/cpp/CMakeLists.txt') } }
+
+    publishing {
+        singleVariant("release") { withSourcesJar() }
+    }
+}
+
+/* ===== vvdec build (CMake/Ninja) ===== */
+
+def vvdecWorkRoot = layout.buildDirectory.dir('vvdec').get().asFile
+def vvdecSrcDir   = new File(vvdecWorkRoot, 'src')
+
+def vvdecRef    = (findProperty('vvdecRef')    ?: 'v3.0.0') as String
+def vvdecRemote = (findProperty('vvdecRemote') ?: 'https://github.com/fraunhoferhhi/vvdec.git') as String
+def vvdecLocal  = (findProperty('VVDEC_SRC')   ?: System.getenv('VVDEC_SRC')) as String
+
+tasks.register('fetchVvdec') {
+    outputs.dir(vvdecSrcDir)
+    doLast {
+        vvdecWorkRoot.mkdirs()
+
+        if (vvdecLocal) {
+            delete vvdecSrcDir
+            copy { from vvdecLocal; into vvdecSrcDir; exclude '.git' }
+            return
+        }
+        def clearGitEnv = { s -> s.environment.remove('GIT_DIR'); s.environment.remove('GIT_WORK_TREE') }
+
+        if (!vvdecSrcDir.exists()) {
+            exec { workingDir vvdecWorkRoot; clearGitEnv(delegate)
+                commandLine 'git', 'clone', '--depth', '1', '--branch', vvdecRef, vvdecRemote, 'src' }
+        } else if (!new File(vvdecSrcDir, '.git').exists()) {
+            delete vvdecSrcDir
+            exec { workingDir vvdecWorkRoot; clearGitEnv(delegate)
+                commandLine 'git', 'clone', '--depth', '1', '--branch', vvdecRef, vvdecRemote, 'src' }
+        } else {
+            exec { workingDir vvdecSrcDir; clearGitEnv(delegate); commandLine 'git', 'fetch', '--depth', '1', 'origin', vvdecRef }
+            exec { workingDir vvdecSrcDir; clearGitEnv(delegate); commandLine 'git', 'checkout', '-f', vvdecRef }
+            exec { workingDir vvdecSrcDir; clearGitEnv(delegate); commandLine 'git', 'reset', '--hard', 'FETCH_HEAD' }
+        }
+    }
+}
+
+vvdecAbis.each { abi ->
+    def buildDir   = new File(vvdecWorkRoot, "build-${abi}")
+    def installDir = new File(vvdecWorkRoot, "install-${abi}")
+
+    tasks.register("buildVvdec_${abi}") {
+        dependsOn 'fetchVvdec'
+        outputs.dir(installDir)
+        doLast {
+            // Wipe cmake cache to avoid stale cross-compilation config after source updates
+            delete buildDir
+            buildDir.mkdirs(); installDir.mkdirs()
+            def ndk = android.ndkDirectory?.absolutePath
+            if (!ndk) throw new GradleException("NDK not found. Ensure ndkVersion ${android.ndkVersion} is installed.")
+
+            exec {
+                workingDir buildDir
+                commandLine 'cmake',
+                        '-G', 'Ninja',
+                        '-D', "CMAKE_TOOLCHAIN_FILE=${ndk}/build/cmake/android.toolchain.cmake",
+                        '-D', "ANDROID_ABI=${abi}",
+                        '-D', "ANDROID_PLATFORM=android-${minApi}",
+                        '-D', "CMAKE_BUILD_TYPE=Release",
+                        '-D', "BUILD_SHARED_LIBS=OFF",
+                        '-D', "VVDEC_ENABLE_TRACING=OFF",
+                        '-D', "CMAKE_INSTALL_PREFIX=${installDir.absolutePath}",
+                        vvdecSrcDir.absolutePath
+            }
+            exec { workingDir buildDir; commandLine 'ninja' }
+            exec { workingDir buildDir; commandLine 'ninja', 'install' }
+        }
+    }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn vvdecAbis.collect { "buildVvdec_${it}" }
+}
+
+/* ===== dist: produce a ready-to-copy AAR with classes.dex injected ===== */
+
+tasks.register('dist') {
+    description 'Assembles release AAR, injects classes.dex via D8, copies to build/outputs/dist/'
+    group       'build'
+    dependsOn   'assembleRelease'
+
+    doLast {
+        def aarIn  = layout.buildDirectory.file('outputs/aar/vcatd-vvdec-plugin-release.aar').get().asFile
+        def aarOut = layout.buildDirectory.file('outputs/dist/vcatd-vvdec-plugin.aar').get().asFile
+        aarOut.parentFile.mkdirs()
+
+        // Locate d8 in the highest installed build-tools version
+        def btRoot   = new File("${android.sdkDirectory.absolutePath}/build-tools")
+        def btLatest = btRoot.listFiles().findAll { it.isDirectory() }
+                             .sort { a, b -> b.name <=> a.name }.first()
+        def onWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+        def d8Exe    = new File(btLatest, onWindows ? 'd8.bat' : 'd8')
+
+        // Extract classes.jar from the AAR
+        def tmpDir     = layout.buildDirectory.dir('dist-tmp').get().asFile
+        tmpDir.mkdirs()
+        def classesJar = new File(tmpDir, 'classes.jar')
+        new java.util.zip.ZipFile(aarIn).withCloseable { zip ->
+            classesJar.bytes = zip.getInputStream(zip.getEntry('classes.jar')).bytes
+        }
+
+        // Run D8 to produce classes.dex
+        def dexDir = new File(tmpDir, 'dex')
+        dexDir.mkdirs()
+        exec {
+            commandLine d8Exe.absolutePath,
+                    '--output', dexDir.absolutePath,
+                    '--min-api', minApi.toString(),
+                    '--release',
+                    classesJar.absolutePath
+        }
+
+        // Repack: copy all AAR entries + inject classes.dex
+        def fos = new java.io.FileOutputStream(aarOut)
+        def zos = new java.util.zip.ZipOutputStream(fos)
+        new java.util.zip.ZipFile(aarIn).withCloseable { zip ->
+            zip.entries().each { entry ->
+                zos.putNextEntry(new java.util.zip.ZipEntry(entry.name))
+                if (!entry.isDirectory()) zos.write(zip.getInputStream(entry).bytes)
+                zos.closeEntry()
+            }
+        }
+        zos.putNextEntry(new java.util.zip.ZipEntry('classes.dex'))
+        zos.write(new File(dexDir, 'classes.dex').bytes)
+        zos.closeEntry()
+        zos.close()
+
+        logger.lifecycle("dist → ${aarOut.absolutePath}")
+    }
+}
+
+/* ===== Publishing ===== */
+
+tasks.register('androidJavadocJar', Jar) { archiveClassifier = 'javadoc' }
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                artifact(tasks.named('androidJavadocJar'))
+
+                groupId    = project.group
+                artifactId = 'vcatd-vvdec-plugin'
+                version    = project.version
+
+                pom {
+                    name.set('VCAT vvdec decoder plugin')
+                    description.set('VVC/H.266 software decoder plugin for VCAT (vvdec)')
+                    licenses {
+                        license {
+                            name.set('GPL-3.0-or-later')
+                            url.set('https://www.gnu.org/licenses/gpl-3.0.html')
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    tasks.named('publishReleasePublicationToMavenLocal') {
+        dependsOn 'assembleRelease'
+    }
+}
+
+/* ===== Dependencies ===== */
+dependencies {
+    compileOnly 'com.roncatech.vcat:decoder-plugin-api:1.0.0'
+    compileOnly 'com.google.android.exoplayer:exoplayer-core:2.19.1'
+    compileOnly 'androidx.annotation:annotation:1.7.1'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'com.google.android.exoplayer:exoplayer-core:2.19.1'
+    testImplementation 'com.roncatech.vcat:decoder-plugin-api:1.0.0'
+}
