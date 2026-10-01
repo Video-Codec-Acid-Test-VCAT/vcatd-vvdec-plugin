@@ -39,7 +39,7 @@ See the [VCAT build instructions](https://github.com/Video-Codec-Acid-Test-VCAT/
 
 | Dependency | Version | License | Source |
 |---|---|---|---|
-| vvdec | 3.0.0 | Clear BSD | [fraunhoferhhi/vvdec](https://github.com/fraunhoferhhi/vvdec) |
+| vvdec | 3.2.0 | Clear BSD | [fraunhoferhhi/vvdec](https://github.com/fraunhoferhhi/vvdec) |
 | vcatd-decoder-plugin-api | 1.0.1 | GPL-3.0-or-later | Maven Central |
 
 ## License

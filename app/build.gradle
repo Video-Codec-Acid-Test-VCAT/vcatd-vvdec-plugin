@@ -56,7 +56,7 @@ android {
 def vvdecWorkRoot = layout.buildDirectory.dir('vvdec').get().asFile
 def vvdecSrcDir   = new File(vvdecWorkRoot, 'src')
 
-def vvdecRef    = (findProperty('vvdecRef')    ?: 'v3.0.0') as String
+def vvdecRef    = (findProperty('vvdecRef')    ?: 'v3.2.0') as String
 def vvdecRemote = (findProperty('vvdecRemote') ?: 'https://github.com/fraunhoferhhi/vvdec.git') as String
 def vvdecLocal  = (findProperty('VVDEC_SRC')   ?: System.getenv('VVDEC_SRC')) as String
 
@@ -80,9 +80,11 @@ tasks.register('fetchVvdec') {
             exec { workingDir vvdecWorkRoot; clearGitEnv(delegate)
                 commandLine 'git', 'clone', '--depth', '1', '--branch', vvdecRef, vvdecRemote, 'src' }
         } else {
-            exec { workingDir vvdecSrcDir; clearGitEnv(delegate); commandLine 'git', 'fetch', '--depth', '1', 'origin', vvdecRef }
-            exec { workingDir vvdecSrcDir; clearGitEnv(delegate); commandLine 'git', 'checkout', '-f', vvdecRef }
-            exec { workingDir vvdecSrcDir; clearGitEnv(delegate); commandLine 'git', 'reset', '--hard', 'FETCH_HEAD' }
+            // Check out FETCH_HEAD, not vvdecRef: a shallow fetch of a tag populates
+            // FETCH_HEAD without creating the tag locally, so checkout by name fails.
+            exec { workingDir vvdecSrcDir; clearGitEnv(delegate); commandLine 'git', 'fetch', '--depth', '1', '--force', 'origin', vvdecRef }
+            exec { workingDir vvdecSrcDir; clearGitEnv(delegate); commandLine 'git', 'checkout', '-f', '--detach', 'FETCH_HEAD' }
+            exec { workingDir vvdecSrcDir; clearGitEnv(delegate); commandLine 'git', 'clean', '-xfd' }
         }
     }
 }

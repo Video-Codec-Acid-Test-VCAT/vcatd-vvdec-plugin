@@ -27,7 +27,7 @@ The AAR is published to Maven Local: `com.roncatech.vcat:vcatd-vvdec-plugin:0.0.
 ./gradlew assembleRelease
 ```
 
-The build automatically fetches and compiles vvdec (default: v3.0.0) for both `arm64-v8a` and `armeabi-v7a`. Override the source with the `VVDEC_SRC` environment variable to point to a local clone.
+The build automatically fetches and compiles vvdec (default: v3.2.0) for both `arm64-v8a` and `armeabi-v7a`. Override the source with the `VVDEC_SRC` environment variable to point to a local clone.
 
 The `dist` task post-processes the AAR: it extracts `classes.jar`, runs D8 to produce `classes.dex` (minApi 29), then repacks the AAR with the DEX injected — required for plugin loading by the host app.
 
