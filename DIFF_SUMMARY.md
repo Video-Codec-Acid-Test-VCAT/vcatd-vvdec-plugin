@@ -4,6 +4,36 @@ Running summary of notable changes to `vcatd-vvdec-plugin`, newest first.
 
 ---
 
+## 2026-10-04 — Stop force-rendering late frames; drop them to hold the native frame rate
+
+`VvdecVideoRenderer` overrode `shouldForceRenderOutputBuffer` to return `earlyUs <= 0` — render
+whenever a frame is due or already late. `DecoderVideoRenderer.processOutputBuffer` evaluates that
+check *before* the drop checks, so every late frame was rendered and the
+`shouldDropOutputBuffer` branch below it was unreachable. Playback advanced at whatever rate the
+decoder managed instead of dropping frames to stay on the clock.
+
+That inverts the benchmark: a decoder that cannot keep up stretches the timeline and is rewarded
+with a longer battery run. Measured on CPH2625 against the 604.8 s / 29.97 fps 1080p VVC stream,
+where realtime is 5.95 loops/hour:
+
+| build | loops/hour | realtime | `frames_dropped` | battery |
+|---|---|---|---|---|
+| vvdec 3.0.0 | 3.8 | 0.64× | 0 | 8.00 h |
+| vvdec 3.2.0 | 5.8 | 0.97× | 0 | 6.57 h |
+
+3.0.0 was playing in slow motion while reporting no drops, which made the older build look like
+the more efficient one. It was simply doing less work per hour.
+
+The override is removed. The inherited thresholds now apply: drop a frame at `earlyUs < -50 ms`,
+drop to the next keyframe at `earlyUs < -500 ms` — what a player does. Playback holds the
+content's frame rate, and a decoder that falls behind sheds frames and says so, which is what
+makes `frames_dropped` and the battery number mean anything.
+
+The same override was removed from the dav1d and dav2d plugins, so all five decoders are now
+measured on the same terms.
+
+---
+
 ## 2026-10-01 — Bump vvdec `v3.0.0` → `v3.2.0`
 
 - Default `vvdecRef` in `app/build.gradle` now tracks **vvdec 3.2.0** (upstream's latest stable,
