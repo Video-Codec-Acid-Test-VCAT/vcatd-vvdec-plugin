@@ -166,8 +166,29 @@ public final class VvdecVideoRenderer extends DecoderVideoRenderer {
     @Override
     protected boolean shouldDropBuffersToKeyframe(long earlyUs, long elapsedRealtimeUs) {
         // Seek forward to keyframe if we're ~0.5 s behind.
-        return earlyUs < -500_000;
+        boolean veryLate = earlyUs < -500_000;
+        if (veryLate) {
+            // Telemetry reports how many frames a skip discarded, but not how late the renderer
+            // believed it was when it asked -- and that is the number in dispute. Runs have
+            // reported thousands of frames discarded in one interval with zero drops anywhere in
+            // the body of the clip, which cannot come from falling behind gradually: reaching
+            // this threshold means first spending a long time past shouldDropOutputBuffer's
+            // 50 ms, which would leave a trail. Logging earlyUs here distinguishes a decoder
+            // that really is seconds late from a discontinuity in the timestamps it is compared
+            // against. Rate-limited to one line a second so a genuine stall cannot flood.
+            long nowMs = elapsedRealtimeUs / 1000L;
+            if (nowMs - lastVeryLateLogMs > 1000L) {
+                lastVeryLateLogMs = nowMs;
+                Log.w(TAG, "VERY-LATE earlyUs=" + earlyUs + " (" + (earlyUs / 1000L) + " ms late)"
+                        + " consecutive=" + (++veryLateCount));
+            }
+        }
+        return veryLate;
     }
+
+    /** Diagnostics for the skip-to-keyframe threshold; see shouldDropBuffersToKeyframe. */
+    private long lastVeryLateLogMs = 0L;
+    private int veryLateCount = 0;
 
     // shouldForceRenderOutputBuffer is deliberately NOT overridden.
     //

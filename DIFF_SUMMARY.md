@@ -4,6 +4,29 @@ Running summary of notable changes to `vcatd-vvdec-plugin`, newest first.
 
 ---
 
+## 2026-10-06 — Log how late the renderer thinks it is at the skip threshold
+
+Diagnostic only; no behaviour change. `shouldDropBuffersToKeyframe` now logs `earlyUs` when it
+fires, rate-limited to one line a second.
+
+CPH2625 runs report rows discarding 1,554–7,495 frames to a keyframe in a single interval, while
+every row covering the body of a clip reports **zero** drops. Those cannot both describe a
+decoder falling behind. Reaching this threshold at −500 ms means first spending a long time past
+`shouldDropOutputBuffer`'s −50 ms, which would leave a trail of small drops; there is none across
+102 body rows. And 6,000 frames is 200 seconds of lateness, which would require sustained
+half-rate decode for minutes — again leaving a trail that is absent.
+
+So the suspicion is a discontinuity in the timestamps `earlyUs` is computed against rather than a
+slow decoder, and the renderer is the only place that can be observed directly. Telemetry records
+how many frames a skip discarded but never how late the renderer believed it was when it asked,
+and that is the number in dispute.
+
+Pairs with the host-side columns added the same day (`video.frames_rendered`,
+`video.dropped_to_keyframe_events`), which bound the same question arithmetically: one skip can
+only discard what is in the sample queue, and `DefaultLoadControl` caps that at 50 s.
+
+---
+
 ## 2026-10-04 — Stop force-rendering late frames; drop them to hold the native frame rate
 
 `VvdecVideoRenderer` overrode `shouldForceRenderOutputBuffer` to return `earlyUs <= 0` — render
