@@ -4,6 +4,27 @@ Running summary of notable changes to `vcatd-vvdec-plugin`, newest first.
 
 ---
 
+## 2026-10-13 — Never refuse input; the 16-packet cap ended runs mid-stall
+
+`nativeQueueInput` returned `-EAGAIN` once 16 packets were queued, and `VvdecDecoder` turns any
+non-zero rc into a `VvdecDecoderException` — which surfaces as a playback error and **ends the
+run**.
+
+That is not back-pressure. Sixteen packets is about half a second of video, ExoPlayer buffers
+50 s ahead, and a full queue only means the decoder is briefly behind, which is recoverable. The
+cap is also worst-placed: in steady state the backlog never approaches 16, but a skip-to-keyframe
+spiral — measured at 139 skips in 300 s with throughput down to 8.5 fps — builds a backlog by
+definition. So it fired precisely during the episodes worth measuring, and is the likely cause of
+the vvdec 3.0.0 battery run that terminated early with no explanation.
+
+Input is never refused now. The backlog is unbounded and logged once past a soft threshold of 64
+packets; ExoPlayer's own 50 s buffer bounds it upstream. `nativeHasCapacity` always returns true.
+
+The same defect was fixed in `vcatd-dav1d-plugin`, where it was worse — that plugin discarded the
+declined packet instead of raising, losing bitstream silently.
+
+---
+
 ## 2026-10-06 — Log how late the renderer thinks it is at the skip threshold
 
 Diagnostic only; no behaviour change. `shouldDropBuffersToKeyframe` now logs `earlyUs` when it

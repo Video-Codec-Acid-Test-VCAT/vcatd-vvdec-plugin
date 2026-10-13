@@ -52,7 +52,8 @@ extern "C" {
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO , LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-static constexpr size_t kMaxPendingPackets = 16;
+// Soft threshold for logging only; input is never refused. See nativeQueueInput.
+static constexpr size_t kPendingBacklogWarn = 64;
 
 struct InputNode {
     vvdecAccessUnit* au = nullptr;
@@ -258,8 +259,16 @@ Java_com_roncatech_libvcat_vvdec_NativeVvdec_nativeQueueInput(
     if (!ctx || !ctx->dec) return -EINVAL;
     if (!byteBuffer || size <= 0) return -EINVAL;
 
-    if (ctx->pending.size() >= kMaxPendingPackets) {
-        return -EAGAIN;
+    // Never refuse input. A 16-packet cap used to return -EAGAIN here, and VvdecDecoder turns
+    // any non-zero rc into a VvdecDecoderException, which ends the run. That is not
+    // back-pressure: 16 packets is about half a second of video, ExoPlayer buffers 50 s ahead,
+    // and a full queue only means the decoder is briefly behind -- a recoverable condition. It
+    // fired precisely during the episodes worth measuring, since a skip-to-keyframe spiral
+    // (139 skips in 300 s, throughput down to 8.5 fps) builds a backlog by definition. The
+    // backlog is unbounded now and only logged past a soft threshold; ExoPlayer's own buffer
+    // bounds it upstream.
+    if (ctx->pending.size() == kPendingBacklogWarn) {
+        LOGW("input backlog at %zu packets; decoder is not keeping up", ctx->pending.size());
     }
 
     jlong cap = env->GetDirectBufferCapacity(byteBuffer);
@@ -310,7 +319,7 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_roncatech_libvcat_vvdec_NativeVvdec_nativeHasCapacity(JNIEnv*, jclass, jlong handle) {
     auto* ctx = reinterpret_cast<NativeCtx*>(handle);
     if (!ctx || !ctx->dec) return JNI_FALSE;
-    return (ctx->pending.size() < kMaxPendingPackets) ? JNI_TRUE : JNI_FALSE;
+    return JNI_TRUE;   // input is never refused; see nativeQueueInput
 }
 
 extern "C" JNIEXPORT jlong JNICALL
