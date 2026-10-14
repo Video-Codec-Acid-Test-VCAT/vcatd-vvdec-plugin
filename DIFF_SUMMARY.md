@@ -4,6 +4,49 @@ Running summary of notable changes to `vcatd-vvdec-plugin`, newest first.
 
 ---
 
+## 2026-10-14 — Send the container's parameter sets to vvdec; VVC-only-in-vvcC played black
+
+`VvcVideoCfgParser` extracts VPS/SPS/PPS from the `vvcC` box into `Format.initializationData`
+with Annex B start codes attached. **Nothing ever sent them to vvdec.** Grepping the plugin for
+`initializationData` returned exactly one hit: the line that stores it.
+
+So the decoder only ever worked on streams that happen to repeat their parameter sets in-band.
+A stream carrying them solely in `vvcC` produced slices with no active SPS: `vvdec_decode`
+returned `VVDEC_ERR_DEC_INPUT` (-4) for every access unit, zero pictures came out, and the
+surface stayed black with no error dialog — the decoder was alive and rejecting everything.
+
+Found with a JNI diagnostic that dumps the head of the first three access units:
+
+```
+AU[0] size=69734 startsAnnexB=YES head: 00 00 00 01 00 a1 88  00 00 00 01 00 89 20 ...
+                                                   type 20 = AUD      type 17 = PREFIX_APS
+```
+
+Annex B conversion was fine; the parameter sets simply were not there. After the fix:
+
+```
+AU[0] size=254   type 15 = SPS
+AU[1] size=18    type 16 = PPS
+AU[2] size=69734 the sample
+```
+
+`sendCsdIfNeeded()` queues each buffer as its own access unit ahead of the first sample, which
+keeps the sample's own timestamp intact, once per format. It re-arms on `setInputFormat()` and
+after a flush, since a flush drops decoder state including the parameter sets.
+
+**What this was not.** Ruled out before finding it: the file (ffmpeg decodes it, and so do vvdec
+3.0.0 and 3.2.0 built from source at 200+ fps), the vvdec version, the `vvcC` parsing (simulated
+against both files' real records — both yield 1920x1080 with correct SPS/PPS arrays), and the
+missing `colr` box.
+
+### Also: the two vvdec plugins were indistinguishable in logcat
+
+Both defined `LOG_TAG "vvdec_jni"`, so there was no way to tell which produced a line — and
+`vcat-vvdec-3.0.0` turned out to be the one running while the 3.2 plugin was being debugged.
+The 3.0 fork now logs as `vvdec30_jni`.
+
+---
+
 ## 2026-10-13 — Never refuse input; the 16-packet cap ended runs mid-stall
 
 `nativeQueueInput` returned `-EAGAIN` once 16 packets were queued, and `VvdecDecoder` turns any

@@ -302,6 +302,22 @@ Java_com_roncatech_libvcat_vvdec_NativeVvdec_nativeQueueInput(
 
     std::memcpy(node->au->payload, src, (size_t)size);
     node->au->payloadUsedSize = (uint32_t)size;
+
+    // Diagnostic: dump the head of the first few access units. vvdec requires Annex B, so a
+    // valid AU starts 00 00 00 01 (or 00 00 01) followed by a 2-byte VVC NAL header. If these
+    // begin with a 4-byte big-endian length instead, the MP4 length-prefix to start-code
+    // conversion did not happen and vvdec will reject every packet -- which is the symptom on
+    // the Ballet_1080p_vvc encode: vvdec_decode returns -11 from the very first call while
+    // vvdec 3.2.0 decodes the same stream from an Annex B file without complaint.
+    if (ctx->pkts_in_total < 3) {
+        char hex[128]; int n = (size < 24) ? size : 24; int o = 0;
+        for (int i = 0; i < n && o < (int)sizeof(hex) - 4; i++)
+            o += snprintf(hex + o, sizeof(hex) - o, "%02x ", (unsigned)src[i]);
+        const bool annexb = size >= 4 && src[0] == 0 && src[1] == 0 &&
+                            ((src[2] == 0 && src[3] == 1) || src[2] == 1);
+        LOGI("AU[%u] size=%d startsAnnexB=%s head: %s",
+             ctx->pkts_in_total, size, annexb ? "YES" : "NO", hex);
+    }
     node->au->cts = (int64_t)ptsUs;
     node->au->ctsValid = 1;
     node->pts_us = (int64_t)ptsUs;

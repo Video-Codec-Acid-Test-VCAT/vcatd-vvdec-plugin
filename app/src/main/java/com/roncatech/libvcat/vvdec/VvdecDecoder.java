@@ -85,6 +85,47 @@ final class VvdecDecoder
     /** Called by the renderer on input format changes. */
     void setInputFormat(Format format) {
         this.inputFormat = format;
+        // A new format means new parameter sets; re-send them before the next sample.
+        this.csdSent = false;
+    }
+
+    /**
+     * Whether the codec-specific data from the container has been handed to vvdec yet.
+     *
+     * <p>For VVC in MP4 the VPS/SPS/PPS live in the {@code vvcC} box, not necessarily in the
+     * samples. {@code VvcVideoCfgParser} already extracts them into
+     * {@code Format.initializationData} with Annex B start codes attached, but nothing used to
+     * send them, so vvdec only ever worked on streams that happen to repeat their parameter sets
+     * in-band. A stream that carries them solely in {@code vvcC} produced slices with no active
+     * SPS: {@code vvdec_decode} returned {@code VVDEC_ERR_DEC_INPUT} (-4) for every access unit,
+     * zero pictures came out, and the surface stayed black with no error dialog -- the decoder
+     * was alive and rejecting everything.
+     */
+    private boolean csdSent = false;
+
+    /**
+     * Sends the container's parameter sets to vvdec, once per format.
+     *
+     * <p>Sent as their own access units ahead of the first sample rather than prepended to it,
+     * which keeps the sample's own timestamp intact.
+     */
+    private VvdecDecoderException sendCsdIfNeeded() {
+        if (csdSent || inputFormat == null || inputFormat.initializationData.isEmpty()) {
+            csdSent = true;
+            return null;
+        }
+        for (byte[] csd : inputFormat.initializationData) {
+            if (csd == null || csd.length == 0) continue;
+            ByteBuffer buf = ByteBuffer.allocateDirect(csd.length);
+            buf.put(csd);
+            buf.position(0);
+            int rc = NativeVvdec.nativeQueueInput(nativeCtx, buf, 0, csd.length, 0L);
+            if (rc != 0) {
+                return new VvdecDecoderException("queueing parameter sets failed: " + rc);
+            }
+        }
+        csdSent = true;
+        return null;
     }
 
     @Override
@@ -137,8 +178,15 @@ final class VvdecDecoder
         if (reset) {
             NativeVvdec.nativeFlush(nativeCtx);
             eosSignaled = false;
+            // A flush drops the decoder's state, parameter sets included, so they must be
+            // re-sent before the next sample.
+            csdSent = false;
         }
         final boolean decodeOnly = in.isDecodeOnly();
+
+        // Parameter sets first, or slices arrive with no active SPS and are all rejected.
+        VvdecDecoderException csdError = sendCsdIfNeeded();
+        if (csdError != null) return csdError;
 
         // EOS path: signal EOF, try one drain; if none, set EOS flag.
         if (in.isEndOfStream()) {
