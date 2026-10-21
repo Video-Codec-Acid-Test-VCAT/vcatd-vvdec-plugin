@@ -4,6 +4,31 @@ Running summary of notable changes to `vcatd-vvdec-plugin`, newest first.
 
 ---
 
+## 2026-10-20 — Note: this plugin shares the `SimpleDecoder` one-output-per-input cap
+
+No code change. Recorded here because it was found in `vcatd-dav2d-plugin` and the exposure is
+structural, not AV2-specific.
+
+`VvdecDecoder extends SimpleDecoder`, whose worker takes one input and one output buffer per
+iteration and calls `decode(in, out)`. Its `dequeueOutputBuffer()` is `final`, so a subclass
+cannot hand back a surplus. Output is therefore capped at the input rate, and any picture the
+decoder produces beyond one per input buffer is stranded inside the decoder.
+
+On AV2 this halved the frame rate and grew the ready queue without bound, because alt-ref makes
+one temporal unit yield 1.7-1.9 displayed pictures. **Not currently a defect here:** VVC access
+units in the streams under test map 1:1 to output pictures, and `nativeDequeueFrame` already
+drains to `VVDEC_TRY_AGAIN`, so nothing is stranded in practice.
+
+It becomes a defect the moment a VVC stream presents more pictures than access units. Worth
+knowing before that is diagnosed from scratch a second time — the symptom in dav2d was *not* an
+error but a steady loss of roughly half the frames with every counter reading clean.
+
+The fix, if it is ever needed, is `MultiOutputDecoder` in `vcatd-dav2d-plugin`: implements
+`Decoder` directly, worker prefers draining and only consumes an input when the decoder has
+nothing left to give, `decode()` split into `sendInput()` and `fillOutput()`.
+
+---
+
 ## 2026-10-14 — Send the container's parameter sets to vvdec; VVC-only-in-vvcC played black
 
 `VvcVideoCfgParser` extracts VPS/SPS/PPS from the `vvcC` box into `Format.initializationData`
