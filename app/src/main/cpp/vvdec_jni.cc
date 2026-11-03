@@ -142,10 +142,20 @@ static void flush_pending_to_decoder(NativeCtx* ctx) {
         int rc = vvdec_decode(ctx->dec, n->au, &out);
 
         if (rc == VVDEC_TRY_AGAIN) {
+            // The AU WAS consumed; TRY_AGAIN only means no picture is ready yet (vvdecimpl.cpp
+            // returns it after decoding, when the AU held VCL NALs but the frame list is empty).
+            // This used to keep the AU at the head of the queue and re-send it, so the opening
+            // keyframe of every clip was decoded once per TRY_AGAIN -- 14 times -- each copy
+            // emerging as its own picture stamped with the keyframe's pts. The renderer held
+            // them until the clock reached that pts, then the leading pictures that should have
+            // preceded it arrived ~0.9 s late and were dropped: ~65 frames at every clip start.
             ctx->pkts_send_tryagain++;
-            // Decoder needs to output frames first - can't accept more input
+            ctx->num_frames_decoded++;
+            ctx->last_in_pts = n->pts_us;
+            ctx->pending.pop_front();
+            delete n;
             if (out) ctx->ready.push_back(out);
-            break;
+            continue;
         }
 
         if (rc != VVDEC_OK && rc != VVDEC_EOF) {
@@ -356,8 +366,13 @@ Java_com_roncatech_libvcat_vvdec_NativeVvdec_nativeDequeueFrame(
     if (!ctx->ready.empty()) {
         frame = ctx->ready.front();
         ctx->ready.pop_front();
+    } else if (!ctx->eos) {
+        // Nothing ready, and mid-stream there is no way to ask for more: a null AU is vvdec's
+        // flush/EOF signal, not a poll. Calling it here returned VVDEC_ERR_DEC_INPUT (-4) on
+        // every empty dequeue. Pictures arrive on the back of the next AU instead.
+        return 0;
     } else {
-        // Try to get a frame from decoder directly
+        // End of stream: a null AU flushes, draining the pictures vvdec still holds.
         int rc = vvdec_decode(ctx->dec, nullptr, &frame);
 
         if (rc == VVDEC_TRY_AGAIN || rc == VVDEC_EOF) {

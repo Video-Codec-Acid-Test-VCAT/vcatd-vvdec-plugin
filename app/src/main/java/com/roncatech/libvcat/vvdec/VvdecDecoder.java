@@ -46,9 +46,10 @@ import java.nio.ByteBuffer;
 final class VvdecDecoder
         extends SimpleDecoder<DecoderInputBuffer, VvdecOutputBuffer, VvdecDecoderException> {
 
-    // Local copies of 2.x buffer flags to avoid Media3 suggestions.
-    private static final int FLAG_DECODE_ONLY   = 0x1;
-    private static final int FLAG_END_OF_STREAM = 0x4;
+    // ExoPlayer 2.x buffer flags. FLAG_DECODE_ONLY used to be a local 0x1, which is
+    // BUFFER_FLAG_KEY_FRAME: every buffer meant to be marked decode-only was marked a keyframe.
+    private static final int FLAG_DECODE_ONLY   = C.BUFFER_FLAG_DECODE_ONLY;
+    private static final int FLAG_END_OF_STREAM = C.BUFFER_FLAG_END_OF_STREAM;
 
     private static final int NUM_INPUT_BUFFERS  = 8;
     private static final int NUM_OUTPUT_BUFFERS = 8;
@@ -243,20 +244,24 @@ final class VvdecDecoder
         }
 
         // Non-blocking drain attempt (vvdec may have produced one).
-        {
-            int[] wh = new int[2]; long[] pts = new long[1];
-            long h = NativeVvdec.nativeDequeueFrame(nativeCtx, wh, pts);
-            if (wh[0] == -1) return new VvdecDecoderException("vvdec dequeue failed: " + wh[1]);
-            if (h != 0) {
-                out.mode = C.VIDEO_OUTPUT_MODE_SURFACE_YUV;
-                out.timeUs = pts[0];
-                out.width = wh[0];
-                out.height = wh[1];
-                out.format = inputFormat;
-                out.nativePic = h;
-                if (decodeOnly) out.addFlag(FLAG_DECODE_ONLY);
-                return null;
-            }
+        int[] wh = new int[2]; long[] pts = new long[1];
+        long h = NativeVvdec.nativeDequeueFrame(nativeCtx, wh, pts);
+        if (wh[0] == -1) return new VvdecDecoderException("vvdec dequeue failed: " + wh[1]);
+        if (h != 0) {
+            out.mode = C.VIDEO_OUTPUT_MODE_SURFACE_YUV;
+            out.timeUs = pts[0];
+            out.width = wh[0];
+            out.height = wh[1];
+            out.format = inputFormat;
+            out.nativePic = h;
+            if (decodeOnly) out.addFlag(FLAG_DECODE_ONLY);
+        } else {
+            // No picture for this input. SimpleDecoder pairs every input with one output, so an
+            // empty buffer still reaches the renderer, which has no picture to show and books it
+            // as a dropped frame -- seven of them at the start of every clip while vvdec fills
+            // its pipeline, counted before playback had even started. Decode-only makes
+            // SimpleDecoder release it and count it as skipped instead.
+            out.addFlag(FLAG_DECODE_ONLY);
         }
 
         return null;
