@@ -4,7 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-An Android Library (AAR) that implements a VVC (H.266) software video decoder plugin for VCAT (Video Codec Acid Test). It wraps the [vvdec](https://github.com/fraunhoferhhi/vvdec) reference decoder via JNI and integrates with the host app through a plugin SPI based on ExoPlayer 2.x.
+A VVC (H.266) software video decoder plugin for VCAT (Video Codec Acid Test), wrapping the [vvdec](https://github.com/fraunhoferhhi/vvdec) reference decoder. **One project, two outputs:**
+
+- **Android:** an AAR, via JNI and a plugin SPI based on ExoPlayer 2.x (`app/`, Gradle).
+- **iOS:** an `.xcframework` holding one self-describing dynamic library for vcat-d-ios (`ios/` + `native/`, `ios/build_xcframework.sh`).
+
+`plugin.json` is the single source of truth for the id (`vcat.vvdec`), MIME type and the pinned vvdec ref. Gradle reads it, and so does the iOS script. Gradle only includes `app/`; the iOS script never touches Gradle and needs no Android SDK. Keep platform-specific code in `app/` (Android) or `ios/` + `native/` (iOS). vvdec 3.0 (`vcatd-vvdec-30-plugin`) is Android-only and gets no iOS output.
 
 The AAR is published to Maven Local: `com.roncatech.vcat:vcatd-vvdec-plugin:0.0.1`
 
@@ -27,7 +32,16 @@ The AAR is published to Maven Local: `com.roncatech.vcat:vcatd-vvdec-plugin:0.0.
 ./gradlew assembleRelease
 ```
 
-The build automatically fetches and compiles vvdec (default: v3.2.0) for both `arm64-v8a` and `armeabi-v7a`. Override the source with the `VVDEC_SRC` environment variable to point to a local clone.
+The build automatically fetches and compiles vvdec at the `plugin.json` pin (v3.2.0) for both `arm64-v8a` and `armeabi-v7a`. Override the source with the `VVDEC_SRC` environment variable to point to a local clone.
+
+iOS:
+
+```bash
+ios/build_xcframework.sh   # → build/dist/vcatd-vvdec-plugin.xcframework (needs Xcode, cmake, ninja,
+                           #   and vcat-d-ios next to this repo for plugin-api/vcat_decoder_plugin.h)
+```
+
+The iOS plugin is `native/vcat_plugin_vvdec.c` (vcat-d-ios plugin C ABI v2, exporting only `vcat_plugin_entry`), linked with `clang++` against vvdec into `vcatd_vvdec.framework`. The manifest generated from `plugin.json` sits in `__TEXT,__vcat_manifest` and is also returned by `manifest_json()`; read it with `segedit -extract` (`otool -s` prints target-endian words). It must keep the decode-loop rules of `vvdec_jni.cc`: TRY_AGAIN = consumed (never resend), never refuse input, drop a rejected AU and continue, cts passthrough, `vvdec_flush` only after `end_of_stream` (a NULL AU mid-stream is an error). `decoder_name` = `vcat-vvdec-` + `vvdec_get_version()`, untruncated, same as Android. The CMake toolchain is `ios/cmake/ios.toolchain.cmake` (moved here from vcat-d-ios).
 
 The `dist` task post-processes the AAR: it extracts `classes.jar`, runs D8 to produce `classes.dex` (minApi 29), then repacks the AAR with the DEX injected — required for plugin loading by the host app.
 

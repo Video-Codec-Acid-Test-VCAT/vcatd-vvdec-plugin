@@ -56,8 +56,11 @@ android {
 def vvdecWorkRoot = layout.buildDirectory.dir('vvdec').get().asFile
 def vvdecSrcDir   = new File(vvdecWorkRoot, 'src')
 
-def vvdecRef    = (findProperty('vvdecRef')    ?: 'v3.2.0') as String
-def vvdecRemote = (findProperty('vvdecRemote') ?: 'https://github.com/fraunhoferhhi/vvdec.git') as String
+// The pin lives in ../plugin.json, shared with the iOS build (ios/build_xcframework.sh), so both
+// platforms always build the same vvdec. Override for a one-off with -PvvdecRef / -PvvdecRemote.
+def pluginJson  = new groovy.json.JsonSlurper().parse(rootProject.file('plugin.json'))
+def vvdecRef    = (findProperty('vvdecRef')    ?: pluginJson.source.ref) as String
+def vvdecRemote = (findProperty('vvdecRemote') ?: pluginJson.source.remote) as String
 def vvdecLocal  = (findProperty('VVDEC_SRC')   ?: System.getenv('VVDEC_SRC')) as String
 
 tasks.register('fetchVvdec') {

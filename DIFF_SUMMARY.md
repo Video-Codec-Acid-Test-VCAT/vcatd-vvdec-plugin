@@ -4,6 +4,61 @@ Running summary of notable changes to `vcatd-vvdec-plugin`, newest first.
 
 ---
 
+## 2026-11-03 — iOS output: the same plugin now builds for vcat-d-ios
+
+**Theme:** One project, two outputs. `ios/build_xcframework.sh` produces
+`build/dist/vcatd-vvdec-plugin.xcframework`, one self-describing dynamic library, alongside the
+`.aar`. vcat-d-ios no longer builds vvdec itself: its `scripts/build_vvdec.sh`, `cmake/` toolchain
+and Swift `VvdecDecoder` are gone, and the toolchain file moved here (`ios/cmake/`).
+
+### Shared, not copied
+
+`plugin.json` holds the id (`vcat.vvdec`), MIME type (`video/vvc`) and the pinned vvdec source
+(v3.2.0). Gradle now reads its `vvdecRef` / `vvdecRemote` defaults from it; the overrides are
+unchanged. The iOS script reads it too, so the two platforms can't drift. Gradle only includes
+`app/`, and the iOS script needs no Android SDK.
+
+### The iOS plugin
+
+**`native/vcat_plugin_vvdec.c`** implements vcat-d-ios's plugin C ABI (v2) over vvdec. It keeps
+every decode-loop rule of `vvdec_jni.cc`, including 1d19fd8, and of the Swift decoder it
+replaces:
+- `VVDEC_TRY_AGAIN` means the access unit was **consumed**. It is never re-sent.
+- Input is never refused.
+- An access unit vvdec rejects is dropped and decoding continues.
+- `cts` passes through, so reordered pictures come out with their own times.
+- `vvdec_flush` is called only after `end_of_stream`, never as a mid-stream poll.
+- `decoder_name` is `vcat-vvdec-` + `vvdec_get_version()`, untruncated (`vcat-vvdec-3.2.0`), the
+  same string as Android.
+
+`reset` reopens the decoder, since vvdec has no discard call.
+
+**Linking:** with `clang++` into `vcatd_vvdec.framework`. vvdec's C++ internals stay private to
+the library, which depends only on `libc++` and `libSystem`. It exports only `vcat_plugin_entry`,
+and the manifest is embedded in `__TEXT,__vcat_manifest` and returned by `manifest_json()`.
+
+### Verified (in vcat-d-ios, with this plugin embedded)
+
+- `VVCPluginDecoderTests` pass: real pixels, cts passthrough, and the deep-GOP regression with one
+  frame per AU and distinct presentation times. So do the VVC identity and every-plugin decode
+  tests.
+- The VVC true-seek resume UI test passes.
+- Device build links.
+
+`./gradlew clean dist` builds the `.aar`, cloning vvdec at the pin now read from `plugin.json`.
+The arm64 JNI library is the same size as the one vcat loads today (2,568,280 bytes). Not run on
+an Android device in this change, since the Android code is unchanged.
+
+**README:** restructured into Android and iOS sections with full iOS build instructions. Also
+fixes the Android build command (`./gradlew dist`; `:app:dist` was the wrong project path) and
+the plugin-API version (1.0.3, not 1.0.1).
+
+### Commits
+
+Branch `vcatd-ios-plugin-model` (this commit). App side: vcat-d-ios branch `plugin-model`.
+
+---
+
 ## 2026-11-03 — Clip-start frame loss: the keyframe decoded 14 times, empty outputs booked as drops
 
 Four defects, all visible at the start of every clip.

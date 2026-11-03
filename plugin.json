@@ -1,0 +1,13 @@
+{
+  "id": "vcat.vvdec",
+  "mimeType": "video/vvc",
+  "decoderNamePrefix": "vcat-vvdec-",
+  "artifact": "vcatd-vvdec-plugin",
+  "source": {
+    "name": "vvdec",
+    "remote": "https://github.com/fraunhoferhhi/vvdec.git",
+    "ref": "v3.2.0"
+  },
+  "linkerFlags": [],
+  "license": "GPL-3.0-or-later; vvdec BSD-3-Clause-Clear"
+}
