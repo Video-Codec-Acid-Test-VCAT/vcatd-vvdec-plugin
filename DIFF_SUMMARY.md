@@ -4,6 +4,36 @@ Running summary of notable changes to `vcatd-vvdec-plugin`, newest first.
 
 ---
 
+## 2026-11-03 — Clip-start frame loss: the keyframe decoded 14 times, empty outputs booked as drops
+
+Four defects, all visible at the start of every clip.
+
+**`VVDEC_TRY_AGAIN` re-sent the access unit.** `flush_pending_to_decoder` treated `TRY_AGAIN` as
+"input not accepted" and left the AU at the head of the pending queue. It means the opposite:
+`vvdecimpl.cpp` returns it *after* decoding, when the AU held VCL NALs but no picture is ready
+yet. The opening keyframe was therefore decoded once per `TRY_AGAIN` — 14 times — each copy
+emerging as its own picture stamped with the keyframe's pts. The renderer held them until the
+clock reached that pts, and the leading pictures that should have preceded it arrived ~0.9 s
+late and were dropped: ~65 frames per clip start. The AU is now popped and counted as consumed,
+and the loop continues with the next one.
+
+**`nativeDequeueFrame` polled with a null AU mid-stream.** With nothing in the ready queue it
+called `vvdec_decode(dec, nullptr, ...)`, but a null AU is vvdec's flush/EOF signal, not a poll,
+and returned `VVDEC_ERR_DEC_INPUT` (-4) on every empty dequeue. Mid-stream it now returns no
+frame; pictures arrive on the back of the next AU. The null-AU drain is kept for end of stream.
+
+**`FLAG_DECODE_ONLY` was `0x1`, which is `BUFFER_FLAG_KEY_FRAME`.** The local copies of the 2.x
+flags were wrong: every buffer meant to be marked decode-only was marked a keyframe instead.
+Both flags now come from `C.BUFFER_FLAG_DECODE_ONLY` / `C.BUFFER_FLAG_END_OF_STREAM`.
+
+**Empty outputs counted as dropped frames.** `SimpleDecoder` pairs every input with one output,
+so when vvdec has no picture for an input (seven times per clip while it fills its pipeline) an
+empty buffer still reached the renderer, which booked it as a dropped frame before playback had
+even started. Empty outputs are now flagged decode-only, so `SimpleDecoder` releases them and
+counts them as skipped. (This only works because of the flag fix above.)
+
+---
+
 ## 2026-10-20 — Note: this plugin shares the `SimpleDecoder` one-output-per-input cap
 
 No code change. Recorded here because it was found in `vcatd-dav2d-plugin` and the exposure is
