@@ -1,4 +1,5 @@
 {
+  "version": "0.1.0",
   "id": "vcat.vvdec",
   "mimeType": "video/vvc",
   "decoderNamePrefix": "vcat-vvdec-",
